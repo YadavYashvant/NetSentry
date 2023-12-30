@@ -155,12 +155,14 @@ suspend fun loadDataUsage(
 ) {
     withContext(Dispatchers.IO) {
         try {
-            val totalUsage = dataUsageViewModel.getTotalDataUsage()
-            val todayUsage = dataUsageViewModel.getTodayDataUsage()
-
-            updateDataUsage(totalUsage, todayUsage)
+            dataUsageViewModel.getTotalDataUsage { total ->
+                dataUsageViewModel.getTodayDataUsage { today ->
+                    // Update the UI with the new data usage values
+                    updateDataUsage(total, today)
+                }
+            }
         } catch (e: Exception) {
-            print("$e")
+            e.printStackTrace()
         }
         // Implement logic to get and update data usage
         // You should use DataUsageViewModel for these operations
