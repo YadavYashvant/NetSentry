@@ -45,10 +45,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -62,6 +66,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
+import com.example.netsentry.ui.theme.blackV
+import com.example.netsentry.ui.theme.blueV
+import com.example.netsentry.ui.theme.poppinsFont
+import com.example.netsentry.ui.theme.tungstenFont
+import com.example.netsentry.ui.theme.valorantFont
 import com.example.netsentry.viewmodels.DataUsageViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -79,8 +88,10 @@ class MainActivity : ComponentActivity() {
             NetSentryTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(color = blackV),
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     DataUsageAppContent(dataUsageViewModel = dataUsageViewModel)
                 }
@@ -109,8 +120,12 @@ fun DataUsageAppContent(dataUsageViewModel: DataUsageViewModel) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(text = "Data Usage App") },
+            CenterAlignedTopAppBar(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    blackV
+                ),
+                title = { Text(text = "Data Usage App", color = Color.White, fontFamily = valorantFont, fontSize = 30.sp) },
+                //modifier = Modifier.background(color = blueV),
                 actions = {
                     IconButton(onClick = {
                         if (!refreshing) {
@@ -127,23 +142,36 @@ fun DataUsageAppContent(dataUsageViewModel: DataUsageViewModel) {
                     }) {
                         Icon(
                             imageVector = Icons.Outlined.Refresh,
-                            contentDescription = null
+                            contentDescription = null,
+                            tint = Color.White
                         )
                     }
                 }
             )
         },
+        containerColor = blackV,
+        contentColor = Color.White,
         content = {
-            Column(
+            OutlinedCard(
+                onClick = { /*TODO*/ },
                 modifier = Modifier
-                    .padding(16.dp)
-                    .padding(top = 100.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 100.dp),
+                colors = CardDefaults.outlinedCardColors(
+                    blueV
+                )
             ) {
-                Text(text = "Total Data Usage: $totalDataUsage MB")
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(text = "Today's Data Usage: $todayDataUsage MB")
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .padding(vertical = 32.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = "Total Data Usage: $totalDataUsage MB", fontSize = 20.sp, fontFamily = poppinsFont)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(text = "Today's Data Usage: $todayDataUsage MB", fontSize = 20.sp, fontFamily = poppinsFont)
+                }
             }
         }
     )
