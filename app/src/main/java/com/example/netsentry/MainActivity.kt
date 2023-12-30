@@ -42,133 +42,132 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
+import com.example.netsentry.viewmodels.DataUsageViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
-
+import kotlin.math.log
 
 class MainActivity : ComponentActivity() {
 
-    private val REQUEST_PERMISSION_CODE = 101
-
+    private val dataUsageViewModel by lazy { DataUsageViewModel(applicationContext) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Check if the permission is already granted
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED) {
-            // Request the permission
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_NETWORK_STATE), REQUEST_PERMISSION_CODE)
-        } else {
-            // Permission is already granted, proceed with the app
-            setContent {
-                App()
-            }
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_PERMISSION_CODE && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            // Permission was granted, proceed with the app
-            setContent {
-                App()
+        setContent {
+            NetSentryTheme {
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    DataUsageAppContent(dataUsageViewModel = dataUsageViewModel)
+                }
             }
         }
     }
 }
 
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun App() {
+fun DataUsageAppContent(dataUsageViewModel: DataUsageViewModel) {
+    var totalDataUsage by remember { mutableStateOf(0L) }
+    var todayDataUsage by remember { mutableStateOf(0L) }
+
+    var refreshing by remember { mutableStateOf(false) }
+
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        loadDataUsage(dataUsageViewModel/*, ::updateDataUsage*/) {total, today ->
+            totalDataUsage = total
+            todayDataUsage = today
+        }
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(text = "Daily Data Usage") })
+            TopAppBar(
+                title = { Text(text = "Data Usage App") },
+                actions = {
+                    IconButton(onClick = {
+                        if (!refreshing) {
+                            refreshing = true
+                            coroutineScope.launch {
+                                loadDataUsage(dataUsageViewModel) { total, today ->
+                                    totalDataUsage = total
+                                    todayDataUsage = today
+                                }
+
+                                refreshing = false
+                            }
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Refresh,
+                            contentDescription = null
+                        )
+                    }
+                }
+            )
         },
-        content = { MainContent() }
+        content = {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .padding(top = 100.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "Total Data Usage: $totalDataUsage MB")
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "Today's Data Usage: $todayDataUsage MB")
+            }
+        }
     )
 }
 
-@SuppressLint("UnrememberedMutableState")
-@Composable
-fun MainContent() {
-    val context = LocalContext.current
-    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val dataUsageList = mutableStateListOf<DataUsageItem>()
+suspend fun loadDataUsage(
+    dataUsageViewModel: DataUsageViewModel,
+    updateDataUsage: (total: Long, today: Long) -> Unit
+) {
+    withContext(Dispatchers.IO) {
+        try {
+            val totalUsage = dataUsageViewModel.getTotalDataUsage()
+            val todayUsage = dataUsageViewModel.getTodayDataUsage()
 
-    LaunchedEffect(Unit) {
-        val networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onLosing(network: Network, maxMsToLive: Int) {
-                super.onLosing(network, maxMsToLive)
-                val networkInfo = connectivityManager.getNetworkInfo(network)
-                val networkType = networkInfo?.typeName ?: "Unknown"
-                val usageInfo = dataUsageList.find { it.networkType == networkType }
-                if (usageInfo != null) {
-                    dataUsageList.remove(usageInfo)
-                }
-            }
-
-            override fun onUnavailable() {
-                super.onUnavailable()
-                val networkInfo = connectivityManager.activeNetworkInfo
-                val networkType = networkInfo?.typeName ?: "Unknown"
-                val usageInfo = dataUsageList.find { it.networkType == networkType }
-                if (usageInfo != null) {
-                    dataUsageList.remove(usageInfo)
-                }
-            }
-
-            override fun onAvailable(network: Network) {
-                super.onAvailable(network)
-                val networkInfo = connectivityManager.getNetworkInfo(network)
-                val networkType = networkInfo?.typeName ?: "Unknown"
-                var usageInfo = dataUsageList.find { it.networkType == networkType }
-                val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                if (usageInfo == null || usageInfo.date != currentDate) {
-                    usageInfo = DataUsageItem(networkType, currentDate)
-                    dataUsageList.add(usageInfo)
-                }
-                if(usageInfo.dataUsage.isNotEmpty()) {
-                    usageInfo.dataUsage = usageInfo.dataUsage.substring(11)
-                }
-            }
+            updateDataUsage(totalUsage, todayUsage)
+        } catch (e: Exception) {
+            print("$e")
         }
-        connectivityManager.registerDefaultNetworkCallback(networkCallback)
-    }
-
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(top = 100.dp)) {
-        items(dataUsageList) { dataUsageItem ->
-            DataUsageListItem(dataUsageItem)
-        }
+        // Implement logic to get and update data usage
+        // You should use DataUsageViewModel for these operations
+        // Update totalDataUsage and todayDataUsage accordingly
     }
 }
 
-@Composable
-fun DataUsageListItem(dataUsageItem: DataUsageItem) {
-    Card(
-        modifier = Modifier
-            .padding(8.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        //backgroundColor = MaterialTheme.colors.primary
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = dataUsageItem.networkType, fontSize = 18.sp, color = Color.White)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = dataUsageItem.dataUsage, fontSize = 14.sp, color = Color.White)
-        }
-    }
-}
-
-data class DataUsageItem(val networkType: String, val date: String, var dataUsage: String = "")
 /*
 class MainActivity : ComponentActivity() {
 
