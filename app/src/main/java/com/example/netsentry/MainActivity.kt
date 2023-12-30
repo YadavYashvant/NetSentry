@@ -124,7 +124,7 @@ fun DataUsageAppContent(dataUsageViewModel: DataUsageViewModel) {
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     blackV
                 ),
-                title = { Text(text = "Data Usage App", color = Color.White, fontFamily = valorantFont, fontSize = 30.sp) },
+                title = { Text(text = "NetSentry", color = Color.White, fontFamily = valorantFont, fontSize = 30.sp) },
                 //modifier = Modifier.background(color = blueV),
                 actions = {
                     IconButton(onClick = {
