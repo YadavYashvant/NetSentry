@@ -20,6 +20,7 @@ class DataUsageViewModel(private val context: Context) : ViewModel() {
     private val networkStatsManager =
         context.getSystemService(Context.NETWORK_STATS_SERVICE) as NetworkStatsManager
 
+    // Get the total data usage for the device
     fun getTotalDataUsage(callback: (Long) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val totalUsage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
